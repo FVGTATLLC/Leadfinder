@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -l \"/c/Users/ACER/Downloads/Sales-management-Nigeria-main.zip\")",
+      "Bash(awk '{print $4}')",
+      "Bash(grep -E \"^Sales-management-Nigeria-main/[^/]*$\")",
+      "Bash(awk -F'/' 'NF==3 && $3==\"\"')",
+      "Bash(gh --version)",
+      "Bash(git --version)",
+      "Bash(git config *)",
+      "Bash(git ls-remote *)",
+      "Bash(unzip -q \"/c/Users/ACER/Downloads/Sales-management-Nigeria-main.zip\")",
+      "Bash(mv Sales-management-Nigeria-main/.claude Sales-management-Nigeria-main/.gitignore Sales-management-Nigeria-main/.vercelignore Sales-management-Nigeria-main/DEPLOY_GCP.md Sales-management-Nigeria-main/Makefile Sales-management-Nigeria-main/README.md Sales-management-Nigeria-main/backend Sales-management-Nigeria-main/docs Sales-management-Nigeria-main/frontend Sales-management-Nigeria-main/infra Sales-management-Nigeria-main/scripts .)",
+      "Bash(rmdir Sales-management-Nigeria-main)"
+    ]
+  }
+}

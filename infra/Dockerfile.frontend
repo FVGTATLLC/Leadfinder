@@ -1,0 +1,19 @@
+# ---- Base stage ----
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# ---- Dependencies stage ----
+FROM base AS deps
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci || npm install
+
+# ---- Development stage ----
+FROM deps AS dev
+
+COPY frontend/ ./
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]

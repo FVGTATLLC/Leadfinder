@@ -1,0 +1,137 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: salespilot-postgres-prod
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salespilot}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-salespilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: salespilot-redis-prod
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend.prod
+    container_name: salespilot-backend-prod
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../.env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?err}@postgres:5432/${POSTGRES_DB:-salespilot}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend.prod
+    container_name: salespilot-celery-worker-prod
+    restart: always
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    depends_on:
+      - backend
+      - redis
+    env_file:
+      - ../.env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?err}@postgres:5432/${POSTGRES_DB:-salespilot}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    networks:
+      - salespilot-network
+
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend.prod
+    container_name: salespilot-celery-beat-prod
+    restart: always
+    command: celery -A app.celery_app beat --loglevel=info
+    depends_on:
+      - celery-worker
+    env_file:
+      - ../.env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?err}@postgres:5432/${POSTGRES_DB:-salespilot}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    networks:
+      - salespilot-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: salespilot-frontend-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file:
+      - ../.env.prod
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  salespilot-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

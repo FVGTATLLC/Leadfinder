@@ -1,0 +1,143 @@
+version: "3.9"
+
+# =============================================================================
+# SalesPilot — Local Development Services
+# =============================================================================
+# NOTE: The frontend is deployed on Vercel in production.
+# For local development, you can either:
+#   1. Run the frontend separately with `cd frontend && npm run dev`
+#   2. Uncomment the frontend service below to run it via Docker
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: salespilot-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: salespilot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d salespilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: salespilot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - salespilot-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    container_name: salespilot-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/salespilot
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../backend:/app/backend
+    networks:
+      - salespilot-network
+
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    container_name: salespilot-celery-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      - backend
+      - redis
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/salespilot
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../backend:/app/backend
+    networks:
+      - salespilot-network
+
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    container_name: salespilot-celery-beat
+    restart: unless-stopped
+    command: celery -A app.celery_app beat --loglevel=info
+    depends_on:
+      - celery-worker
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/salespilot
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../backend:/app/backend
+    networks:
+      - salespilot-network
+
+  # ---------------------------------------------------------------------------
+  # Frontend (optional for local dev — production uses Vercel)
+  # ---------------------------------------------------------------------------
+  # Uncomment the block below if you prefer running the frontend via Docker
+  # instead of `npm run dev` locally.
+  # ---------------------------------------------------------------------------
+  # frontend:
+  #   build:
+  #     context: ..
+  #     dockerfile: infra/Dockerfile.frontend
+  #   container_name: salespilot-frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   env_file:
+  #     - ../.env
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+  #   volumes:
+  #     - ../frontend:/app/frontend
+  #     - /app/frontend/node_modules
+  #   networks:
+  #     - salespilot-network
+
+networks:
+  salespilot-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

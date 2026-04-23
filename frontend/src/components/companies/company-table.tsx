@@ -1,0 +1,130 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { DataTable, type Column } from "@/components/common/data-table";
+import { ScoreBadge } from "@/components/companies/score-badge";
+import { StatusBadge } from "@/components/common/status-badge";
+import { formatNumber, formatDate } from "@/lib/utils";
+import type { Company } from "@/types/models";
+
+interface CompanyTableProps {
+  companies: Company[];
+  isLoading?: boolean;
+  sortColumn?: string;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: string) => void;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelectChange?: (ids: Set<string>) => void;
+}
+
+export function CompanyTable({
+  companies,
+  isLoading = false,
+  sortColumn,
+  sortDirection,
+  onSort,
+  selectable = false,
+  selectedIds,
+  onSelectChange,
+}: CompanyTableProps) {
+  const router = useRouter();
+
+  const columns: Column<Company>[] = [
+    {
+      key: "name",
+      label: "Company",
+      sortable: true,
+      render: (item) => (
+        <div>
+          <p className="font-medium text-gray-900">{item.name}</p>
+          {item.domain && (
+            <p className="text-xs text-gray-500">{item.domain}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "industry",
+      label: "Industry",
+      render: (item) =>
+        item.industry ? (
+          <span className="text-sm text-gray-700">{item.industry}</span>
+        ) : (
+          <span className="text-gray-300">&mdash;</span>
+        ),
+    },
+    {
+      key: "geography",
+      label: "Geography",
+      render: (item) =>
+        item.geography ? (
+          <span className="text-sm text-gray-700">{item.geography}</span>
+        ) : (
+          <span className="text-gray-300">&mdash;</span>
+        ),
+    },
+    {
+      key: "employee_count",
+      label: "Employees",
+      sortable: true,
+      render: (item) =>
+        item.employeeCount !== null ? (
+          <span className="text-sm text-gray-700">
+            {formatNumber(item.employeeCount)}
+          </span>
+        ) : (
+          <span className="text-gray-300">&mdash;</span>
+        ),
+    },
+    {
+      key: "icp_score",
+      label: "ICP Score",
+      sortable: true,
+      render: (item) => <ScoreBadge score={item.icpScore} />,
+    },
+    {
+      key: "source",
+      label: "Source",
+      render: (item) => (
+        <StatusBadge
+          status={item.source}
+          variantMap={{
+            manual: "bg-gray-100 text-gray-700",
+            discovery_agent: "bg-purple-50 text-purple-700",
+            import: "bg-blue-50 text-blue-700",
+          }}
+        />
+      ),
+    },
+    {
+      key: "created_at",
+      label: "Added",
+      sortable: true,
+      render: (item) => (
+        <span className="text-sm text-gray-500">
+          {formatDate(item.createdAt)}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <DataTable
+      columns={columns}
+      data={companies}
+      keyField="id"
+      isLoading={isLoading}
+      sortColumn={sortColumn}
+      sortDirection={sortDirection}
+      onSort={onSort}
+      selectable={selectable}
+      selectedIds={selectedIds}
+      onSelectChange={onSelectChange}
+      onRowClick={(item) =>
+        router.push(`/dashboard/companies/${(item as unknown as Company).id}`)
+      }
+      emptyMessage="No companies found matching your criteria."
+    />
+  );
+}
