@@ -70,7 +70,7 @@ async def create_campaign(
     # Attach any contacts provided alongside creation
     if data.contact_ids:
         await campaign_service.add_contacts_to_campaign(
-            db, campaign.id, CampaignContactAdd(contact_ids=data.contact_ids)
+            db, campaign.id, data.contact_ids
         )
 
     # Set status if caller asked for something other than the default
