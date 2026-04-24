@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import { DataTable, type Column } from "@/components/common/data-table";
-import { ScoreBadge } from "@/components/companies/score-badge";
 import { StatusBadge } from "@/components/common/status-badge";
-import { formatNumber, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { Company } from "@/types/models";
 
 interface CompanyTableProps {
@@ -65,23 +65,41 @@ export function CompanyTable({
         ),
     },
     {
-      key: "employee_count",
-      label: "Employees",
-      sortable: true,
+      key: "phone",
+      label: "Phone Number",
+      render: (item) => {
+        const phone = (item.scoreBreakdown?.phone as string | undefined) ?? null;
+        return phone ? (
+          <a
+            href={`tel:${phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm text-gray-700 hover:text-primary-600"
+          >
+            {phone}
+          </a>
+        ) : (
+          <span className="text-gray-300">&mdash;</span>
+        );
+      },
+    },
+    {
+      key: "website",
+      label: "Website",
       render: (item) =>
-        item.employeeCount !== null ? (
-          <span className="text-sm text-gray-700">
-            {formatNumber(item.employeeCount)}
-          </span>
+        item.website ? (
+          <a
+            href={item.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+          >
+            {item.domain ?? item.website}
+            <ExternalLink className="h-3 w-3" />
+          </a>
         ) : (
           <span className="text-gray-300">&mdash;</span>
         ),
-    },
-    {
-      key: "icp_score",
-      label: "ICP Score",
-      sortable: true,
-      render: (item) => <ScoreBadge score={item.icpScore} />,
     },
     {
       key: "source",
