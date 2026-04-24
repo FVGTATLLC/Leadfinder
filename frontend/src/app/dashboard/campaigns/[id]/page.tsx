@@ -32,7 +32,7 @@ import { CampaignStatsRow } from "@/components/campaigns/campaign-stats-row";
 import { CampaignProgressBar } from "@/components/campaigns/campaign-progress-bar";
 import { StepCompletionChart } from "@/components/campaigns/step-completion-chart";
 import { ContactProgressTable } from "@/components/campaigns/contact-progress-table";
-import { apiGet, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api-client";
 import { formatDate, cn } from "@/lib/utils";
 import type {
   Campaign,
@@ -142,7 +142,7 @@ export default function CampaignDetailPage() {
     setActionLoading(true);
     setError(null);
     try {
-      await apiPatch(`/campaigns/${campaignId}/approve`);
+      await apiPost(`/campaigns/${campaignId}/approve`);
       mutate(`/campaigns/${campaignId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve");
