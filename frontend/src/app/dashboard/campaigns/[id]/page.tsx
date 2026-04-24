@@ -139,6 +139,15 @@ export default function CampaignDetailPage() {
     setError(null);
     try {
       if (newStatus === "active") {
+        // Auto-approve first so generated messages land as "approved"
+        // instead of "draft" (one-click Launch experience).
+        if (campaign && !campaign.approvedBy) {
+          try {
+            await apiPost(`/campaigns/${campaignId}/approve`);
+          } catch {
+            // Non-fatal; activation will still proceed.
+          }
+        }
         await apiPost(`/campaigns/${campaignId}/activate`);
       } else if (newStatus === "paused") {
         await apiPost(`/campaigns/${campaignId}/pause`);
@@ -147,7 +156,9 @@ export default function CampaignDetailPage() {
       } else {
         await apiPatch(`/campaigns/${campaignId}`, { status: newStatus });
       }
+      // Refresh campaign detail + any messages views
       mutate(`/campaigns/${campaignId}`);
+      mutate((key) => typeof key === "string" && key.startsWith("/messages"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {

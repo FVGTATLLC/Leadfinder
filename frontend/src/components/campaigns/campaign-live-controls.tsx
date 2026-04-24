@@ -138,7 +138,7 @@ export function CampaignLiveControls({
               className="bg-green-600 hover:bg-green-700"
             >
               <Play className="mr-1.5 h-3.5 w-3.5" />
-              Activate Campaign
+              {campaign.approvedBy ? "Activate Campaign" : "Launch Campaign"}
             </Button>
           )}
 
