@@ -118,13 +118,38 @@ async def delete_campaign(
     db: AsyncSession,
     campaign_id: uuid.UUID,
 ) -> None:
-    """Soft delete a campaign. Must be draft or paused."""
+    """Soft delete a campaign and cascade to its messages + steps."""
+    from sqlalchemy import update
+
+    from app.models.message_draft import MessageDraft
+    from app.models.sequence_step import SequenceStep
+
     campaign = await get_campaign(db, campaign_id)
-    if campaign.status not in ("draft", "paused"):
+    if campaign.status not in ("draft", "paused", "active", "completed", "archived"):
         raise ValidationError(
-            f"Cannot delete campaign with status '{campaign.status}'. "
-            "Only draft or paused campaigns can be deleted."
+            f"Cannot delete campaign with status '{campaign.status}'."
         )
+
+    # Cascade soft-delete: messages
+    await db.execute(
+        update(MessageDraft)
+        .where(
+            MessageDraft.campaign_id == campaign_id,
+            MessageDraft.is_deleted.is_(False),
+        )
+        .values(is_deleted=True)
+    )
+
+    # Cascade soft-delete: sequence steps
+    await db.execute(
+        update(SequenceStep)
+        .where(
+            SequenceStep.campaign_id == campaign_id,
+            SequenceStep.is_deleted.is_(False),
+        )
+        .values(is_deleted=True)
+    )
+
     campaign.is_deleted = True
     await db.flush()
 
