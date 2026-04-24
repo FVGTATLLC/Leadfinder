@@ -32,7 +32,11 @@ import { CampaignStatsRow } from "@/components/campaigns/campaign-stats-row";
 import { CampaignProgressBar } from "@/components/campaigns/campaign-progress-bar";
 import { StepCompletionChart } from "@/components/campaigns/step-completion-chart";
 import { ContactProgressTable } from "@/components/campaigns/contact-progress-table";
+import { ContactSelector } from "@/components/campaigns/contact-selector";
+import { CompanySelector } from "@/components/campaigns/company-selector";
 import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api-client";
+import type { Contact } from "@/types/models";
+import type { PaginatedResponse } from "@/types/api";
 import { formatDate, cn } from "@/lib/utils";
 import type {
   Campaign,
@@ -86,6 +90,11 @@ export default function CampaignDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isAddContactsOpen, setIsAddContactsOpen] = useState(false);
+  const [addContactsTab, setAddContactsTab] = useState<"contacts" | "companies">("contacts");
+  const [pickedContactIds, setPickedContactIds] = useState<Set<string>>(new Set());
+  const [pickedCompanyIds, setPickedCompanyIds] = useState<Set<string>>(new Set());
+  const [addingContacts, setAddingContacts] = useState(false);
 
   // Fetch campaign
   const { data: campaignData, isLoading } = useSWR<ApiResponse<Campaign>>(
@@ -167,6 +176,46 @@ export default function CampaignDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
       setDeleteLoading(false);
+    }
+  };
+
+  const openAddContacts = () => {
+    setPickedContactIds(new Set());
+    setPickedCompanyIds(new Set());
+    setAddContactsTab("contacts");
+    setError(null);
+    setIsAddContactsOpen(true);
+  };
+
+  const handleAddContactsSubmit = async () => {
+    setAddingContacts(true);
+    setError(null);
+    try {
+      const ids = new Set(pickedContactIds);
+      if (pickedCompanyIds.size > 0) {
+        const results = await Promise.all(
+          Array.from(pickedCompanyIds).map((cid) =>
+            apiGet<PaginatedResponse<Contact>>(
+              `/contacts?company_id=${cid}&per_page=200`
+            ).catch(() => ({ items: [] as Contact[] }))
+          )
+        );
+        results.forEach((r) => r.items.forEach((c) => ids.add(c.id)));
+      }
+      if (ids.size === 0) {
+        setError("Select at least one contact or a company that has contacts.");
+        return;
+      }
+      await apiPost(`/campaigns/${campaignId}/contacts`, {
+        contact_ids: Array.from(ids),
+      });
+      mutate(`/campaigns/${campaignId}`);
+      mutate(`/campaigns/${campaignId}/contacts`);
+      setIsAddContactsOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add contacts");
+    } finally {
+      setAddingContacts(false);
     }
   };
 
@@ -512,7 +561,7 @@ export default function CampaignDetailPage() {
                 <h3 className="text-sm font-semibold text-gray-900">
                   Campaign Contacts ({campaign.contactCount})
                 </h3>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={openAddContacts}>
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Add Contacts
                 </Button>
@@ -626,6 +675,68 @@ export default function CampaignDetailPage() {
           <CampaignStatusPanel campaign={campaign} />
         </div>
       </div>
+
+      {/* Add Contacts Modal */}
+      <Modal
+        isOpen={isAddContactsOpen}
+        onClose={() => setIsAddContactsOpen(false)}
+        title="Add contacts to campaign"
+        size="xl"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsAddContactsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddContactsSubmit} isLoading={addingContacts}>
+              Add ({pickedContactIds.size + pickedCompanyIds.size})
+            </Button>
+          </>
+        }
+      >
+        <div className="mb-4 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+          <button
+            type="button"
+            onClick={() => setAddContactsTab("contacts")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+              addContactsTab === "contacts"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            )}
+          >
+            Contacts
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddContactsTab("companies")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+              addContactsTab === "companies"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            )}
+          >
+            Companies
+          </button>
+        </div>
+
+        {addContactsTab === "contacts" ? (
+          <ContactSelector
+            selectedIds={pickedContactIds}
+            onChange={setPickedContactIds}
+          />
+        ) : (
+          <>
+            <p className="mb-3 text-xs text-gray-500">
+              Selecting a company adds all its contacts to the campaign.
+            </p>
+            <CompanySelector
+              selectedIds={pickedCompanyIds}
+              onChange={setPickedCompanyIds}
+            />
+          </>
+        )}
+      </Modal>
 
       {/* Delete Modal */}
       <Modal
