@@ -171,6 +171,12 @@ async def _activate_campaign_impl(campaign_id_str: str, user_id_str: str) -> dic
                 cc_result = await session.execute(cc_stmt)
                 campaign_contacts = list(cc_result.scalars().all())
 
+                from app.models.message_draft import MessageDraft
+                from app.services import message_service
+
+                messages_sent = 0
+                messages_send_failed = 0
+
                 for cc in campaign_contacts:
                     try:
                         contact = await orchestrator._get_contact(cc.contact_id)
@@ -184,6 +190,35 @@ async def _activate_campaign_impl(campaign_id_str: str, user_id_str: str) -> dic
                         if step_result_data.get("message_generated"):
                             messages_generated += 1
                             cc.current_step = first_step.step_number
+
+                            # Auto-send when step delay is zero and message is
+                            # already approved (campaign-level approval path).
+                            if first_step.delay_days == 0:
+                                await session.flush()
+                                msg_stmt = (
+                                    select(MessageDraft)
+                                    .where(
+                                        MessageDraft.campaign_id == campaign_uuid,
+                                        MessageDraft.contact_id == cc.contact_id,
+                                        MessageDraft.step_id == first_step.id,
+                                        MessageDraft.is_deleted.is_(False),
+                                    )
+                                    .order_by(MessageDraft.created_at.desc())
+                                    .limit(1)
+                                )
+                                msg_res = await session.execute(msg_stmt)
+                                msg = msg_res.scalar_one_or_none()
+                                if msg is not None and msg.status == "approved":
+                                    try:
+                                        await message_service.send_message(session, msg.id)
+                                        messages_sent += 1
+                                    except Exception as send_exc:
+                                        messages_send_failed += 1
+                                        logger.error(
+                                            "Auto-send failed for message %s: %s",
+                                            msg.id,
+                                            send_exc,
+                                        )
 
                     except Exception as exc:
                         logger.error(
@@ -201,6 +236,8 @@ async def _activate_campaign_impl(campaign_id_str: str, user_id_str: str) -> dic
                 "campaign_id": campaign_id_str,
                 "campaign_status": campaign.status,
                 "messages_generated": messages_generated,
+                "messages_sent": messages_sent if first_step and first_step.delay_days == 0 else 0,
+                "messages_send_failed": messages_send_failed if first_step and first_step.delay_days == 0 else 0,
             }
 
         except Exception as e:
