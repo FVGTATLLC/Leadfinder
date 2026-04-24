@@ -22,6 +22,7 @@ dependencies = [
     "google-auth-oauthlib>=1.0.0",
     "google-api-python-client>=2.0.0",
     "httpx>=0.28.0",
+    "aiosmtplib>=3.0.0",
     "python-multipart>=0.0.17",
     "pydantic[email]>=2.0.0",
     "email-validator>=2.0.0",

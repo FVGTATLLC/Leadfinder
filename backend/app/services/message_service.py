@@ -187,8 +187,11 @@ async def send_message(
     db: AsyncSession,
     message_id: uuid.UUID,
 ) -> MessageDraft:
-    """Send an approved message via email."""
-    from app.utils.email_sender import get_email_sender
+    """Send an approved message via the campaign creator's connected Gmail.
+
+    Falls back to SMTP if no Gmail connection exists.
+    """
+    from app.services import gmail_service
 
     message = await get_message(db, message_id)
 
@@ -204,23 +207,46 @@ async def send_message(
             "Cannot send message: contact has no email address."
         )
 
-    try:
-        sender = get_email_sender()
-        result = await sender.send_email(
-            to_email=contact.email,
-            subject=message.subject or "",
-            body=message.body,
-            from_email=sender.username,
-            from_name="SalesPilot",
-        )
+    # Use the campaign creator's Gmail connection (falls back to SMTP)
+    sender_user_id = str(message.campaign.created_by) if message.campaign else None
 
-        if result["success"]:
+    try:
+        gmail_conn = None
+        if sender_user_id:
+            gmail_conn = await gmail_service.get_connection(db, sender_user_id)
+
+        if gmail_conn:
+            body_html = (message.body or "").replace("\n", "<br>")
+            result = await gmail_service.send_email(
+                db=db,
+                user_id=sender_user_id,
+                to=contact.email,
+                subject=message.subject or "",
+                body_html=body_html,
+                body_text=message.body,
+            )
+            sent_ok = bool(result.get("success"))
+            error = result.get("error")
+        else:
+            from app.utils.email_sender import get_email_sender
+            sender = get_email_sender()
+            smtp_result = await sender.send_email(
+                to_email=contact.email,
+                subject=message.subject or "",
+                body=message.body,
+                from_email=sender.username,
+                from_name="SalesPilot",
+            )
+            sent_ok = bool(smtp_result.get("success"))
+            error = smtp_result.get("error")
+
+        if sent_ok:
             message.status = "sent"
             message.sent_at = datetime.now(timezone.utc)
             message.error_message = None
         else:
             message.status = "failed"
-            message.error_message = result.get("error", "Unknown send error")
+            message.error_message = error or "Unknown send error"
 
     except Exception as e:
         message.status = "failed"
