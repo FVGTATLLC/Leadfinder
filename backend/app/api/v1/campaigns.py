@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -287,6 +288,76 @@ async def update_campaign_step(
 ) -> SequenceStepResponse:
     step = await campaign_service.update_sequence_step(db, step_id, data)
     return SequenceStepResponse.model_validate(step)
+
+
+class _BulkStepItem(BaseModel):
+    id: uuid.UUID | None = None
+    step_number: int
+    delay_days: int
+    step_type: str | None = None
+    subject_template: str | None = None
+    body_template: str | None = None
+    is_ai_generated: bool = True
+
+
+class _BulkStepsRequest(BaseModel):
+    steps: list[_BulkStepItem]
+
+
+class _BulkStepsResponse(BaseModel):
+    steps: list[SequenceStepResponse]
+
+
+@router.post(
+    "/{campaign_id}/steps/bulk",
+    response_model=_BulkStepsResponse,
+)
+async def bulk_replace_campaign_steps(
+    campaign_id: uuid.UUID,
+    body: _BulkStepsRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[TokenPayload, Depends(get_current_user)],
+) -> _BulkStepsResponse:
+    """Replace the full sequence of a campaign in one round-trip.
+
+    - Updates any step that has an id and is still present.
+    - Creates any step without an id.
+    - Deletes any existing step whose id is absent from the payload.
+    """
+    existing = await campaign_service.get_campaign_steps(db, campaign_id)
+    incoming_ids = {s.id for s in body.steps if s.id is not None}
+
+    for step in existing:
+        if step.id not in incoming_ids:
+            await campaign_service.delete_sequence_step(db, step.id)
+
+    saved: list = []
+    for item in body.steps:
+        if item.id is not None:
+            update = SequenceStepUpdate(
+                delay_days=item.delay_days,
+                step_type=item.step_type,  # type: ignore[arg-type]
+                subject_template=item.subject_template,
+                body_template=item.body_template,
+                is_ai_generated=item.is_ai_generated,
+            )
+            updated = await campaign_service.update_sequence_step(db, item.id, update)
+            saved.append(updated)
+        else:
+            create = SequenceStepCreate(
+                step_number=item.step_number,
+                delay_days=item.delay_days,
+                step_type=item.step_type or "email",  # type: ignore[arg-type]
+                subject_template=item.subject_template,
+                body_template=item.body_template,
+                is_ai_generated=item.is_ai_generated,
+            )
+            created = await campaign_service.add_sequence_step(db, campaign_id, create)
+            saved.append(created)
+
+    return _BulkStepsResponse(
+        steps=[SequenceStepResponse.model_validate(s) for s in saved]
+    )
 
 
 @router.delete("/{campaign_id}/steps/{step_id}", status_code=204)
