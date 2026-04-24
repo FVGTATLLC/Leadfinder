@@ -43,6 +43,18 @@ class DiscoverResponse(BaseModel):
     error: str | None = None
 
 
+class DiscoverMapsRequest(BaseModel):
+    search_terms: list[str]
+    location_query: str | None = None
+    max_per_search: int = 50
+    language: str = "en"
+    category_filters: list[str] | None = None
+    country_code: str | None = None
+    city: str | None = None
+    state: str | None = None
+    skip_closed: bool = True
+
+
 @router.get("", response_model=PaginatedResponse[StrategyListResponse])
 async def list_strategies(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -316,4 +328,87 @@ async def remove_company_from_strategy(
 ) -> None:
     await strategy_service.remove_company_from_strategy(
         db, strategy_id, company_id
+    )
+
+
+@router.post("/{strategy_id}/discover-maps", response_model=DiscoverResponse)
+async def discover_via_google_maps(
+    strategy_id: uuid.UUID,
+    body: DiscoverMapsRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[TokenPayload, Depends(get_current_user)],
+) -> DiscoverResponse:
+    """Discover companies by scraping Google Maps via Apify, then link them
+    to the strategy. Places without a website are still saved using a synthetic
+    domain (placeId) so follow-up enrichment can find them."""
+    import httpx
+    from sqlalchemy import select
+
+    from app.models.company import Company
+    from app.services.apify_scraper import map_place_to_company, scrape_google_maps
+
+    strategy = await strategy_service.get_strategy(db, strategy_id)
+    if strategy is None:
+        return DiscoverResponse(status="failed", error="Strategy not found")
+
+    try:
+        places = await scrape_google_maps(
+            search_terms=body.search_terms,
+            location_query=body.location_query,
+            max_per_search=body.max_per_search,
+            language=body.language,
+            category_filters=body.category_filters,
+            country_code=body.country_code,
+            city=body.city,
+            state=body.state,
+            skip_closed=body.skip_closed,
+            scrape_contacts=False,
+        )
+    except RuntimeError as exc:
+        return DiscoverResponse(status="failed", error=str(exc))
+    except httpx.HTTPError as exc:
+        logger.exception("Apify call failed for strategy %s", strategy_id)
+        return DiscoverResponse(status="failed", error=f"Apify error: {exc!s}")
+
+    added_count = 0
+    added_ids: list[uuid.UUID] = []
+    seen_domains: set[str] = set()
+    user_uuid = uuid.UUID(current_user.sub)
+
+    for place in places:
+        mapped = map_place_to_company(place)
+        domain = mapped.get("domain")
+        # Fallback identifier for places without websites (place_id from Google)
+        if not domain:
+            place_id = (mapped.get("score_breakdown") or {}).get("place_id")
+            if place_id:
+                domain = f"gmaps-{place_id}"
+                mapped["domain"] = domain
+        if not domain or domain in seen_domains:
+            continue
+        seen_domains.add(domain)
+
+        stmt = select(Company).where(
+            Company.domain == domain, Company.is_deleted.is_(False)
+        )
+        existing = (await db.execute(stmt)).scalar_one_or_none()
+        if existing:
+            if existing.id not in added_ids:
+                added_ids.append(existing.id)
+            continue
+
+        new_company = Company(created_by=user_uuid, **mapped)
+        db.add(new_company)
+        await db.flush()
+        added_ids.append(new_company.id)
+        added_count += 1
+
+    if added_ids:
+        await strategy_service.add_companies_to_strategy(db, strategy_id, added_ids)
+
+    await db.commit()
+    return DiscoverResponse(
+        status="completed",
+        companies_found=len(places),
+        companies_added=added_count,
     )

@@ -18,6 +18,48 @@ APIFY_BASE_URL = "https://api.apify.com/v2"
 TIMEOUT = 600.0
 
 
+def extract_domain(website_url: str | None) -> str | None:
+    """Pull a bare domain (no protocol, no path, no query) from a website URL."""
+    if not website_url:
+        return None
+    cleaned = website_url.strip().lower()
+    for prefix in ("https://", "http://"):
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix) :]
+            break
+    cleaned = cleaned.split("/")[0].split("?")[0].split("#")[0]
+    if cleaned.startswith("www."):
+        cleaned = cleaned[4:]
+    return cleaned or None
+
+
+def map_place_to_company(place: dict[str, Any]) -> dict[str, Any]:
+    """Convert an Apify Google Maps place dict into Company model kwargs."""
+    website = place.get("website")
+    country_code = place.get("countryCode")
+    state = place.get("state")
+    geography_parts = [p for p in (state, country_code) if p]
+    return {
+        "name": place.get("title") or "Unknown",
+        "domain": extract_domain(website),
+        "website": website,
+        "industry": place.get("categoryName"),
+        "city": place.get("city"),
+        "country": country_code,
+        "geography": ", ".join(geography_parts) if geography_parts else None,
+        "source": "google_maps",
+        "score_breakdown": {
+            "place_id": place.get("placeId"),
+            "phone": place.get("phone"),
+            "total_score": place.get("totalScore"),
+            "reviews_count": place.get("reviewsCount"),
+            "address": place.get("address"),
+            "categories": place.get("categories"),
+            "location": place.get("location"),
+        },
+    }
+
+
 async def scrape_google_maps(
     search_terms: list[str],
     location_query: str | None = None,
