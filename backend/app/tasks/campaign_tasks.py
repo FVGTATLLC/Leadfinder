@@ -200,7 +200,7 @@ async def _activate_campaign_impl(campaign_id_str: str, user_id_str: str) -> dic
                                     .where(
                                         MessageDraft.campaign_id == campaign_uuid,
                                         MessageDraft.contact_id == cc.contact_id,
-                                        MessageDraft.step_id == first_step.id,
+                                        MessageDraft.sequence_step_id == first_step.id,
                                         MessageDraft.is_deleted.is_(False),
                                     )
                                     .order_by(MessageDraft.created_at.desc())
