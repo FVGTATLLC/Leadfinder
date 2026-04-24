@@ -129,7 +129,15 @@ export default function CampaignDetailPage() {
     setActionLoading(true);
     setError(null);
     try {
-      await apiPatch(`/campaigns/${campaignId}`, { status: newStatus });
+      if (newStatus === "active") {
+        await apiPost(`/campaigns/${campaignId}/activate`);
+      } else if (newStatus === "paused") {
+        await apiPost(`/campaigns/${campaignId}/pause`);
+      } else if (newStatus === "resumed") {
+        await apiPost(`/campaigns/${campaignId}/resume`);
+      } else {
+        await apiPatch(`/campaigns/${campaignId}`, { status: newStatus });
+      }
       mutate(`/campaigns/${campaignId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
