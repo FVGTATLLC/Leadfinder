@@ -43,7 +43,7 @@ export default function StrategyDetailPage() {
 
   const { data: companiesData, isLoading: companiesLoading } = useSWR<
     PaginatedResponse<Company>
-  >(`/strategies/${strategyId}/companies`, (url: string) =>
+  >(`/strategies/${strategyId}/companies?per_page=100`, (url: string) =>
     apiGet<PaginatedResponse<Company>>(url)
   );
 

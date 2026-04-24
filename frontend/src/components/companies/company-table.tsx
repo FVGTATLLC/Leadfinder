@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { DataTable, type Column } from "@/components/common/data-table";
-import { formatDate } from "@/lib/utils";
 import { apiPatch } from "@/lib/api-client";
 import {
   CompanyStatus,
@@ -192,16 +191,6 @@ export function CompanyTable({
           value={(item.status as CompanyStatus) ?? CompanyStatus.NEW}
           onChanged={(next) => onStatusChanged?.(item.id, next)}
         />
-      ),
-    },
-    {
-      key: "created_at",
-      label: "Added",
-      sortable: true,
-      render: (item) => (
-        <span className="text-sm text-gray-500">
-          {formatDate(item.createdAt)}
-        </span>
       ),
     },
   ];
