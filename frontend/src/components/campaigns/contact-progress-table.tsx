@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDate, getInitials, cn } from "@/lib/utils";
 import type { CampaignContact, CampaignProgress } from "@/types/models";
-import type { ApiResponse } from "@/types/api";
+import type { ApiResponse, PaginatedResponse } from "@/types/api";
 
 const contactStatusVariants: Record<string, string> = {
   active: "bg-blue-50 text-blue-700",
@@ -35,13 +35,13 @@ export function ContactProgressTable({ campaignId, totalSteps }: ContactProgress
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const { data: contactsData, isLoading, mutate: mutateContacts } = useSWR<
-    ApiResponse<CampaignContact[]>
+    PaginatedResponse<CampaignContact>
   >(
-    `/campaigns/${campaignId}/contacts`,
-    (url: string) => apiGet<ApiResponse<CampaignContact[]>>(url),
+    `/campaigns/${campaignId}/contacts?per_page=100`,
+    (url: string) => apiGet<PaginatedResponse<CampaignContact>>(url),
     { refreshInterval: 30000 }
   );
-  const contacts = contactsData?.data ?? [];
+  const contacts = contactsData?.items ?? [];
 
   const { data: progressData } = useSWR<ApiResponse<CampaignProgress>>(
     `/campaigns/${campaignId}/progress`,
