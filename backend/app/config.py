@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     APOLLO_API_KEY: str = ""
+    APIFY_API_TOKEN: str = ""
     GOOGLE_SEARCH_API_KEY: str = ""
     GOOGLE_SEARCH_ENGINE_ID: str = ""
     SERPAPI_KEY: str = ""

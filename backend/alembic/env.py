@@ -22,8 +22,7 @@ def get_url() -> str:
     """Get database URL from environment, falling back to alembic.ini config."""
     url = os.environ.get("DATABASE_URL", "")
     if url:
-        # Alembic runs synchronously, so convert asyncpg URL to psycopg2
-        return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        return url
     return config.get_main_option("sqlalchemy.url", "")
 
 

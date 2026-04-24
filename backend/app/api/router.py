@@ -7,6 +7,7 @@ from app.api.v1.gmail import router as gmail_router
 from app.api.v1.companies import router as companies_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.exports import router as exports_router
+from app.api.v1.maps import router as maps_router
 from app.api.v1.messages import router as messages_router
 from app.api.v1.research import router as research_router
 from app.api.v1.settings import router as settings_router
@@ -27,4 +28,5 @@ api_router.include_router(campaigns_router)
 api_router.include_router(messages_router)
 api_router.include_router(analytics_router)
 api_router.include_router(exports_router)
+api_router.include_router(maps_router)
 api_router.include_router(settings_router)
