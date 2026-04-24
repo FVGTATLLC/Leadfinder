@@ -80,9 +80,13 @@ class CompanyListResponse(BaseModel):
     domain: str | None = None
     industry: str | None = None
     geography: str | None = None
+    city: str | None = None
+    country: str | None = None
     employee_count: int | None = None
     icp_score: float | None = None
+    score_breakdown: dict | None = None
     source: str | None = None
+    website: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
