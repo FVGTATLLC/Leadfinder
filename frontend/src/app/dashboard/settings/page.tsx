@@ -61,14 +61,14 @@ function SettingsContent() {
   const [notifyOnReply, setNotifyOnReply] = useState(true);
   const [notifyOnComplete, setNotifyOnComplete] = useState(true);
 
-  // Zoho Mail connection state
+  // Gmail connection state
   const [zohoStatus, setZohoStatus] = useState<ZohoMailStatus | null>(null);
   const [zohoLoading, setZohoLoading] = useState(true);
   const [zohoConnecting, setZohoConnecting] = useState(false);
   const [zohoDisconnecting, setZohoDisconnecting] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
 
-  // Check Zoho Mail status on mount
+  // Check Gmail status on mount
   useEffect(() => {
     checkZohoStatus();
   }, []);
@@ -79,15 +79,15 @@ function SettingsContent() {
     if (zohoParam === "connected") {
       const email = searchParams.get("email");
       toast({
-        title: "Zoho Mail Connected",
-        description: `Successfully connected ${email || "your Zoho Mail"}`,
+        title: "Gmail Connected",
+        description: `Successfully connected ${email || "your Gmail"}`,
         type: "success",
       });
       checkZohoStatus();
     } else if (zohoParam === "error") {
       toast({
-        title: "Zoho Mail Connection Failed",
-        description: searchParams.get("message") || "Failed to connect Zoho Mail",
+        title: "Gmail Connection Failed",
+        description: searchParams.get("message") || "Failed to connect Gmail",
         type: "error",
       });
     }
@@ -124,7 +124,7 @@ function SettingsContent() {
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to start Zoho Mail connection",
+        description: "Failed to start Gmail connection",
         type: "error",
       });
     } finally {
@@ -138,14 +138,14 @@ function SettingsContent() {
       await apiPost("/gmail/disconnect", {});
       setZohoStatus({ connected: false, emailAddress: null, connectedAt: null, isActive: false });
       toast({
-        title: "Zoho Mail Disconnected",
-        description: "Your Zoho Mail account has been disconnected.",
+        title: "Gmail Disconnected",
+        description: "Your Gmail account has been disconnected.",
         type: "success",
       });
     } catch {
       toast({
         title: "Error",
-        description: "Failed to disconnect Zoho Mail",
+        description: "Failed to disconnect Gmail",
         type: "error",
       });
     } finally {
@@ -204,24 +204,24 @@ function SettingsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Zoho Mail Connection */}
+      {/* Gmail Connection */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-blue-600" />
             <h2 className="text-base font-semibold text-gray-900">
-              Zoho Mail Connection
+              Gmail Connection
             </h2>
           </div>
           <p className="mt-0.5 text-sm text-gray-500">
-            Connect your Zoho Mail account to send emails to clients from your own address.
+            Connect your Gmail account to send emails to clients from your own address.
           </p>
         </div>
         <div className="px-6 py-5">
           {zohoLoading ? (
             <div className="flex items-center gap-3 py-4">
               <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="text-sm text-gray-500">Checking Zoho Mail connection...</span>
+              <span className="text-sm text-gray-500">Checking Gmail connection...</span>
             </div>
           ) : zohoStatus?.connected ? (
             <div className="space-y-4">
@@ -231,7 +231,7 @@ function SettingsContent() {
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <div>
                     <p className="text-sm font-medium text-green-800">
-                      Connected to Zoho Mail
+                      Connected to Gmail
                     </p>
                     <p className="text-xs text-green-600">
                       {zohoStatus.emailAddress}
@@ -272,8 +272,8 @@ function SettingsContent() {
               </div>
 
               <p className="text-xs text-gray-500">
-                All emails sent from SalesPilot will use your connected Zoho Mail address.
-                They will also appear in your Zoho Mail Sent folder.
+                All emails sent from SalesPilot will use your connected Gmail address.
+                They will also appear in your Gmail Sent folder.
               </p>
             </div>
           ) : (
@@ -284,10 +284,10 @@ function SettingsContent() {
                   <XCircle className="h-5 w-5 text-gray-400" />
                   <div>
                     <p className="text-sm font-medium text-gray-700">
-                      Zoho Mail not connected
+                      Gmail not connected
                     </p>
                     <p className="text-xs text-gray-500">
-                      Connect your Zoho Mail to send emails from your @clubconcierge.com address
+                      Connect your Gmail to send emails from your @clubconcierge.com address
                     </p>
                   </div>
                 </div>
@@ -301,14 +301,14 @@ function SettingsContent() {
                   ) : (
                     <Mail className="h-4 w-4" />
                   )}
-                  Connect Zoho Mail
+                  Connect Gmail
                 </button>
               </div>
 
               <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
                 <p className="text-xs text-blue-700">
-                  <strong>How it works:</strong> Click &quot;Connect Zoho Mail&quot; to configure your
-                  Zoho Mail SMTP settings. Emails will be sent via smtp.zoho.com using your
+                  <strong>How it works:</strong> Click &quot;Connect Gmail&quot; to configure your
+                  Gmail SMTP settings. Emails will be sent via smtp.zoho.com using your
                   @clubconcierge.com email address securely.
                 </p>
               </div>
