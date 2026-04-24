@@ -48,6 +48,9 @@ class CampaignCreate(BaseModel):
     campaign_type: CampaignType = CampaignType.intro
     tone_preset: TonePreset = TonePreset.consultative
     starts_at: datetime | None = None
+    status: str | None = None
+    contact_ids: list[uuid.UUID] | None = None
+    steps: list["SequenceStepCreate"] | None = None
 
 
 class CampaignUpdate(BaseModel):
@@ -226,3 +229,7 @@ class CampaignContactResponse(BaseModel):
             current_step=cc.current_step,
             added_at=cc.added_at,
         )
+
+
+# Resolve forward reference now that SequenceStepCreate is defined.
+CampaignCreate.model_rebuild()

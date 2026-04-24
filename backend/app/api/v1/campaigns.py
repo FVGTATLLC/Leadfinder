@@ -61,7 +61,27 @@ async def create_campaign(
     campaign = await campaign_service.create_campaign(
         db, uuid.UUID(current_user.sub), data
     )
-    return CampaignResponse.from_campaign(campaign)
+
+    # Attach any sequence steps provided alongside creation
+    if data.steps:
+        for step in data.steps:
+            await campaign_service.add_sequence_step(db, campaign.id, step)
+
+    # Attach any contacts provided alongside creation
+    if data.contact_ids:
+        await campaign_service.add_contacts_to_campaign(
+            db, campaign.id, CampaignContactAdd(contact_ids=data.contact_ids)
+        )
+
+    # Set status if caller asked for something other than the default
+    if data.status and data.status != campaign.status:
+        await campaign_service.update_campaign(
+            db, campaign.id, CampaignUpdate(status=data.status)  # type: ignore[arg-type]
+        )
+
+    # Re-fetch with relationships so response includes the latest state
+    fresh = await campaign_service.get_campaign(db, campaign.id)
+    return CampaignResponse.from_campaign(fresh)
 
 
 @router.get("/{campaign_id}", response_model=CampaignResponse)
