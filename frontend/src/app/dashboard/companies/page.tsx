@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Plus, Download, Trash2, RefreshCw, Upload } from "lucide-react";
@@ -17,66 +17,36 @@ import { apiGet } from "@/lib/api-client";
 import type { Company } from "@/types/models";
 import type { PaginatedResponse } from "@/types/api";
 
-const FILTER_CONFIGS: FilterConfig[] = [
-  {
-    name: "Industry",
-    key: "industry",
-    type: "select",
-    options: [
-      { label: "Technology", value: "Technology" },
-      { label: "Financial Services", value: "Financial Services" },
-      { label: "Healthcare", value: "Healthcare" },
-      { label: "Manufacturing", value: "Manufacturing" },
-      { label: "Retail", value: "Retail" },
-      { label: "Consulting", value: "Consulting" },
-      { label: "Logistics", value: "Logistics" },
-      { label: "Hospitality", value: "Hospitality" },
-    ],
-  },
-  {
-    name: "City",
-    key: "city",
-    type: "select",
-    options: [
-      { label: "Lagos", value: "Lagos" },
-      { label: "Abuja", value: "Abuja" },
-      { label: "Port Harcourt", value: "Port Harcourt" },
-      { label: "Kano", value: "Kano" },
-      { label: "Ibadan", value: "Ibadan" },
-    ],
-  },
-  {
-    name: "Employee Range",
-    key: "employees",
-    type: "range",
-  },
-  {
-    name: "Travel Intensity",
-    key: "travel_intensity",
-    type: "select",
-    options: [
-      { label: "Low", value: "low" },
-      { label: "Medium", value: "medium" },
-      { label: "High", value: "high" },
-      { label: "Very High", value: "very_high" },
-    ],
-  },
-  {
-    name: "Source",
-    key: "source",
-    type: "select",
-    options: [
-      { label: "Manual", value: "manual" },
-      { label: "Discovery Agent", value: "discovery_agent" },
-      { label: "Import", value: "import" },
-    ],
-  },
-  {
-    name: "ICP Score",
-    key: "icp_score",
-    type: "range",
-  },
-];
+interface CompanyRow {
+  industry?: string | null;
+  geography?: string | null;
+  status?: string | null;
+}
+
+function buildFilterConfigs(rows: CompanyRow[]): FilterConfig[] {
+  const toOptions = (key: keyof CompanyRow) => {
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const v = row[key];
+      if (typeof v === "string" && v.trim()) seen.add(v.trim());
+    }
+    return Array.from(seen)
+      .sort((a, b) => a.localeCompare(b))
+      .map((v) => ({ label: v, value: v }));
+  };
+
+  const statusOptions = [
+    { label: "New", value: "new" },
+    { label: "In Process", value: "in_process" },
+    { label: "Converted to customer", value: "converted" },
+  ];
+
+  return [
+    { name: "Industry", key: "industry", type: "select", options: toOptions("industry") },
+    { name: "Geography", key: "geography", type: "select", options: toOptions("geography") },
+    { name: "Status", key: "status", type: "select", options: statusOptions },
+  ];
+}
 
 interface FilterValues {
   [key: string]: string | string[] | { min: string; max: string };
@@ -128,6 +98,11 @@ export default function CompaniesPage() {
 
   const companies = data?.items ?? [];
   const total = data?.total ?? 0;
+
+  const filterConfigs = useMemo(
+    () => buildFilterConfigs(companies),
+    [companies]
+  );
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -194,7 +169,7 @@ export default function CompaniesPage() {
 
       {/* Filters */}
       <FilterPanel
-        filters={FILTER_CONFIGS}
+        filters={filterConfigs}
         values={filterValues}
         onChange={setFilterValues}
         onApply={handleApplyFilters}
