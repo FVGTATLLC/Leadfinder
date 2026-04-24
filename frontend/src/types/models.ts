@@ -57,6 +57,8 @@ export enum TravelIntensity {
 export enum CompanySource {
   MANUAL = "manual",
   DISCOVERY_AGENT = "discovery_agent",
+  AI_DISCOVERY = "ai_discovery",
+  GOOGLE_MAPS = "google_maps",
   IMPORT = "import",
 }
 
