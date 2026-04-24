@@ -64,9 +64,18 @@ function ScoreBar({
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoItem({
+  label,
+  value,
+  span,
+}: {
+  label: string;
+  value: React.ReactNode;
+  span?: 2 | 3;
+}) {
+  const spanClass = span === 3 ? "sm:col-span-2 lg:col-span-3" : span === 2 ? "sm:col-span-2" : "";
   return (
-    <div>
+    <div className={spanClass}>
       <dt className="text-xs font-medium text-gray-500">{label}</dt>
       <dd className="mt-0.5 text-sm text-gray-900">
         {value ?? <span className="text-gray-300">&mdash;</span>}
@@ -502,6 +511,84 @@ export default function CompanyDetailPage() {
           </dl>
         </div>
       </div>
+
+      {/* Google Maps / Apify Data */}
+      {company.source === "google_maps" && Object.keys(scoreBreakdown).length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Google Maps Data
+          </h2>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {typeof scoreBreakdown.phone === "string" && (
+              <InfoItem
+                label="Phone"
+                value={
+                  <a
+                    href={`tel:${scoreBreakdown.phone}`}
+                    className="text-primary-600 hover:text-primary-700"
+                  >
+                    {scoreBreakdown.phone}
+                  </a>
+                }
+              />
+            )}
+            {typeof scoreBreakdown.address === "string" && (
+              <InfoItem
+                label="Address"
+                value={scoreBreakdown.address as string}
+                span={2}
+              />
+            )}
+            {typeof scoreBreakdown.total_score === "number" && (
+              <InfoItem
+                label="Rating"
+                value={`★ ${(scoreBreakdown.total_score as number).toFixed(1)}`}
+              />
+            )}
+            {typeof scoreBreakdown.reviews_count === "number" && (
+              <InfoItem
+                label="Reviews Count"
+                value={(scoreBreakdown.reviews_count as number).toLocaleString()}
+              />
+            )}
+            {Array.isArray(scoreBreakdown.categories) && scoreBreakdown.categories.length > 0 && (
+              <InfoItem
+                label="Categories"
+                value={(scoreBreakdown.categories as string[]).join(", ")}
+                span={2}
+              />
+            )}
+            {typeof scoreBreakdown.place_id === "string" && (
+              <InfoItem
+                label="Google Place ID"
+                value={
+                  <code className="rounded bg-gray-100 px-2 py-0.5 text-xs">
+                    {scoreBreakdown.place_id as string}
+                  </code>
+                }
+              />
+            )}
+            {scoreBreakdown.location &&
+              typeof (scoreBreakdown.location as { lat?: number; lng?: number }).lat === "number" && (
+                <InfoItem
+                  label="Coordinates"
+                  value={
+                    <a
+                      href={`https://www.google.com/maps?q=${(scoreBreakdown.location as { lat: number; lng: number }).lat},${(scoreBreakdown.location as { lat: number; lng: number }).lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700"
+                    >
+                      {(scoreBreakdown.location as { lat: number; lng: number }).lat.toFixed(4)},{" "}
+                      {(scoreBreakdown.location as { lat: number; lng: number }).lng.toFixed(4)}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  }
+                />
+              )}
+          </dl>
+        </div>
+      )}
 
       {/* Contacts Section — AI Discovery */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

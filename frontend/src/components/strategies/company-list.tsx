@@ -27,11 +27,11 @@ export function StrategyCompanyList({
   const columns: Column<Company>[] = [
     {
       key: "name",
-      label: "Company",
+      label: "Name",
       render: (item) => (
         <div>
           <p className="font-medium text-gray-900">{item.name}</p>
-          {item.domain && (
+          {item.domain && !item.domain.startsWith("gmaps-") && (
             <p className="text-xs text-gray-500">{item.domain}</p>
           )}
         </div>
@@ -87,12 +87,35 @@ export function StrategyCompanyList({
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
           >
-            {item.domain ?? new URL(item.website).hostname}
+            {item.domain && !item.domain.startsWith("gmaps-")
+              ? item.domain
+              : new URL(item.website).hostname}
             <ExternalLink className="h-3 w-3" />
           </a>
         ) : (
           <span className="text-gray-300">&mdash;</span>
         ),
+    },
+    {
+      key: "reviewsCount",
+      label: "Reviews Count",
+      render: (item) => {
+        const count = item.scoreBreakdown?.reviews_count ?? item.scoreBreakdown?.reviewsCount;
+        const rating = item.scoreBreakdown?.total_score ?? item.scoreBreakdown?.totalScore;
+        if (typeof count !== "number") {
+          return <span className="text-gray-300">&mdash;</span>;
+        }
+        return (
+          <span className="text-sm text-gray-700">
+            {count.toLocaleString()}
+            {typeof rating === "number" && (
+              <span className="ml-1 text-xs text-gray-500">
+                (★{rating.toFixed(1)})
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "source",
