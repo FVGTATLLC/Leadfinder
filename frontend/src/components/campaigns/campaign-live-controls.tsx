@@ -5,6 +5,7 @@ import {
   Play,
   Pause,
   Archive,
+  ArchiveRestore,
   BarChart3,
   CheckCircle2,
   AlertCircle,
@@ -193,6 +194,19 @@ export function CampaignLiveControls({
                 Archive
               </Button>
             </>
+          )}
+
+          {campaign.status === "archived" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleStatusTransition("draft")}
+              isLoading={isLoading}
+              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />
+              Unarchive
+            </Button>
           )}
         </div>
       </div>
