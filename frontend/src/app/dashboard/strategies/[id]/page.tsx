@@ -88,6 +88,17 @@ export default function StrategyDetailPage() {
   };
 
   const handleDiscover = async () => {
+    if (!strategy) return;
+    const searchTerms = strategy.filters.industry ?? [];
+    const locations = strategy.filters.city ?? [];
+    if (searchTerms.length === 0) {
+      setError("Add at least one Search Term to the strategy before discovering.");
+      return;
+    }
+    if (locations.length === 0) {
+      setError("Add at least one Location to the strategy before discovering.");
+      return;
+    }
     setIsDiscovering(true);
     setError(null);
     try {
@@ -96,12 +107,16 @@ export default function StrategyDetailPage() {
         companiesFound: number;
         companiesAdded: number;
         error: string | null;
-      }>>(`/strategies/${strategyId}/discover`);
+      }>>(`/strategies/${strategyId}/discover-maps`, {
+        search_terms: searchTerms,
+        location_query: locations.join(", "),
+        max_per_search: 30,
+        skip_closed: true,
+      });
       const result = response?.data;
       if (result?.status === "failed") {
-        setError(result.error || "Discovery failed. Please check API keys are configured.");
+        setError(result.error || "Discovery failed. Check Apify token is configured.");
       } else {
-        // Refresh companies list and strategy data
         mutate(`/strategies/${strategyId}/companies`);
         mutate(`/strategies/${strategyId}`);
       }
@@ -261,8 +276,8 @@ export default function StrategyDetailPage() {
         </Button>
         {isDiscovering && (
           <p className="text-sm text-gray-500">
-            Our AI agent is searching for companies matching your ICP filters.
-            This may take a few minutes.
+            Scraping Google Maps for businesses matching your search terms
+            and location. This usually takes 30 – 120 seconds.
           </p>
         )}
       </div>
