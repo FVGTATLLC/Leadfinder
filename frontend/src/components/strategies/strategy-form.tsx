@@ -58,6 +58,7 @@ const LOCATION_SUGGESTIONS = [
 const emptyFilters: StrategyFilters = {
   industry: [],
   city: [],
+  maxPerSearch: 50,
   revenueMin: null,
   revenueMax: null,
   employeeMin: null,
@@ -184,6 +185,31 @@ export function StrategyForm({
         {errors.city && (
           <p className="mt-1.5 text-xs text-red-600">{errors.city}</p>
         )}
+      </section>
+
+      {/* Number of places to extract */}
+      <section>
+        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Number of Places to Extract
+        </h3>
+        <p className="mb-3 text-xs text-gray-500">
+          How many results to pull from Google Maps for each search term
+          (1 – 500). Higher numbers take longer and cost more Apify credits.
+        </p>
+        <Input
+          type="number"
+          min={1}
+          max={500}
+          value={filters.maxPerSearch ?? 50}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            updateFilter(
+              "maxPerSearch",
+              Number.isFinite(n) && n > 0 ? Math.min(n, 500) : 50
+            );
+          }}
+          placeholder="50"
+        />
       </section>
 
       {/* Custom Tags */}

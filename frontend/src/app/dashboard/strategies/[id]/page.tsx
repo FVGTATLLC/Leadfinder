@@ -110,7 +110,7 @@ export default function StrategyDetailPage() {
       }>>(`/strategies/${strategyId}/discover-maps`, {
         search_terms: searchTerms,
         location_query: locations.join(", "),
-        max_per_search: 30,
+        max_per_search: strategy.filters.maxPerSearch ?? 50,
         skip_closed: true,
       });
       const result = response?.data;

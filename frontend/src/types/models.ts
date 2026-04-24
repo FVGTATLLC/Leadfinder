@@ -63,6 +63,7 @@ export enum CompanySource {
 export interface StrategyFilters {
   industry: string[];
   city: string[];
+  maxPerSearch: number | null;
   revenueMin: number | null;
   revenueMax: number | null;
   employeeMin: number | null;
