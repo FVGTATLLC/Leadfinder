@@ -21,10 +21,10 @@ from app.schemas.campaign import (
 from app.schemas.user import TokenPayload
 from app.services import campaign_service
 from app.tasks.campaign_tasks import (
-    activate_campaign_task,
-    pause_campaign_task,
-    resume_campaign_task,
-    stop_contact_sequence,
+    _activate_campaign_impl,
+    _pause_campaign_impl,
+    _resume_campaign_impl,
+    _stop_contact_sequence_impl,
 )
 from app.utils.pagination import PaginatedResponse, PaginationParams
 
@@ -109,14 +109,14 @@ async def activate_campaign(
             f"Cannot activate campaign with status '{campaign.status}'"
         )
 
-    # Dispatch Celery task for activation + step-1 generation
-    task = activate_campaign_task.delay(
-        str(campaign_id), current_user.sub
-    )
+    # Run activation inline (no Celery worker configured). Generates
+    # step-1 messages and sends them synchronously. May take ~15-60 sec
+    # depending on contact count + LLM latency.
+    result = await _activate_campaign_impl(str(campaign_id), current_user.sub)
     return {
-        "message": "Campaign activation started",
+        "message": "Campaign activated",
         "campaign_id": str(campaign_id),
-        "task_id": task.id,
+        **result,
     }
 
 
@@ -134,11 +134,11 @@ async def pause_campaign(
             f"Cannot pause campaign with status '{campaign.status}'"
         )
 
-    task = pause_campaign_task.delay(str(campaign_id))
+    result = await _pause_campaign_impl(str(campaign_id))
     return {
-        "message": "Campaign pause started",
+        "message": "Campaign paused",
         "campaign_id": str(campaign_id),
-        "task_id": task.id,
+        **result,
     }
 
 
@@ -156,11 +156,11 @@ async def resume_campaign(
             f"Cannot resume campaign with status '{campaign.status}'"
         )
 
-    task = resume_campaign_task.delay(str(campaign_id))
+    result = await _resume_campaign_impl(str(campaign_id))
     return {
-        "message": "Campaign resume started",
+        "message": "Campaign resumed",
         "campaign_id": str(campaign_id),
-        "task_id": task.id,
+        **result,
     }
 
 
@@ -172,12 +172,14 @@ async def stop_contact(
     current_user: Annotated[TokenPayload, Depends(get_current_user)],
 ) -> dict:
     """Stop the sequence for a specific contact in a campaign."""
-    task = stop_contact_sequence.delay(str(campaign_id), str(contact_id))
+    result = await _stop_contact_sequence_impl(
+        str(campaign_id), str(contact_id)
+    )
     return {
-        "message": "Contact stop initiated",
+        "message": "Contact sequence stopped",
         "campaign_id": str(campaign_id),
         "contact_id": str(contact_id),
-        "task_id": task.id,
+        **result,
     }
 
 
