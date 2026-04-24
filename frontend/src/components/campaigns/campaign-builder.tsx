@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { Check, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api-client";
+import { apiGet, apiPost } from "@/lib/api-client";
 import { ToneSelector } from "@/components/campaigns/tone-selector";
 import { ContactSelector } from "@/components/campaigns/contact-selector";
+import { CompanySelector } from "@/components/campaigns/company-selector";
 import { StepEditor } from "@/components/campaigns/step-editor";
+import type { Contact } from "@/types/models";
+import type { PaginatedResponse } from "@/types/api";
 import { SequenceTimeline } from "@/components/campaigns/sequence-timeline";
 import { cn } from "@/lib/utils";
 import {
@@ -77,8 +80,11 @@ export function CampaignBuilder({
   const [tonePreset, setTonePreset] = useState<TonePreset | "">("");
   const [strategyId, setStrategyId] = useState<string | null>(null);
 
-  // Step 2: Contacts
+  // Step 2: Targets (contacts AND/OR companies)
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [selectedCompanyIds, setSelectedCompanyIds] = useState<Set<string>>(new Set());
+  const [targetTab, setTargetTab] = useState<"contacts" | "companies">("contacts");
+  const [expandingCompanies, setExpandingCompanies] = useState(false);
 
   // Step 3: Sequence
   const [sequenceSteps, setSequenceSteps] = useState<SequenceStep[]>([]);
@@ -96,7 +102,9 @@ export function CampaignBuilder({
       if (!tonePreset) newErrors.tonePreset = "Select a tone preset";
     }
     if (step === 2) {
-      if (selectedContactIds.size === 0) newErrors.contacts = "Select at least one contact";
+      if (selectedContactIds.size === 0 && selectedCompanyIds.size === 0) {
+        newErrors.contacts = "Select at least one contact or company";
+      }
     }
 
     setErrors(newErrors);
@@ -185,8 +193,34 @@ export function CampaignBuilder({
     setShowNewStepEditor(false);
   };
 
-  const handleSubmit = (activate: boolean) => {
+  const handleSubmit = async (activate: boolean) => {
     if (!validateStep(1) || !validateStep(2)) return;
+
+    const finalIds = new Set(selectedContactIds);
+    if (selectedCompanyIds.size > 0) {
+      setExpandingCompanies(true);
+      try {
+        const results = await Promise.all(
+          Array.from(selectedCompanyIds).map((cid) =>
+            apiGet<PaginatedResponse<Contact>>(
+              `/contacts?company_id=${cid}&per_page=200`
+            ).catch(() => ({ items: [] as Contact[] }))
+          )
+        );
+        results.forEach((r) => r.items.forEach((c) => finalIds.add(c.id)));
+      } finally {
+        setExpandingCompanies(false);
+      }
+    }
+
+    if (finalIds.size === 0) {
+      setErrors({
+        contacts:
+          "None of the selected companies have contacts yet. Add contacts or pick specific contacts.",
+      });
+      return;
+    }
+
     onComplete(
       {
         name,
@@ -194,7 +228,7 @@ export function CampaignBuilder({
         campaignType: campaignType as CampaignType,
         tonePreset: tonePreset as TonePreset,
         strategyId,
-        contactIds: Array.from(selectedContactIds),
+        contactIds: Array.from(finalIds),
         steps: sequenceSteps.map((s) => ({
           delayDays: s.delayDays,
           stepType: s.stepType,
@@ -346,22 +380,71 @@ export function CampaignBuilder({
         </div>
       )}
 
-      {/* Step 2: Select Contacts */}
+      {/* Step 2: Select Targets (Contacts and/or Companies) */}
       {currentStep === 2 && (
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            Select Contacts
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Select Targets
+            </h2>
+            <div className="text-sm text-gray-500">
+              {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""}
+              {" + "}
+              {selectedCompanyIds.size} compan{selectedCompanyIds.size !== 1 ? "ies" : "y"}
+            </div>
+          </div>
+
+          <div className="mb-4 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => setTargetTab("contacts")}
+              className={cn(
+                "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                targetTab === "contacts"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Contacts
+            </button>
+            <button
+              type="button"
+              onClick={() => setTargetTab("companies")}
+              className={cn(
+                "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                targetTab === "companies"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Companies
+            </button>
+          </div>
+
           {errors.contacts && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
               {errors.contacts}
             </div>
           )}
-          <ContactSelector
-            selectedIds={selectedContactIds}
-            onChange={setSelectedContactIds}
-            strategyId={strategyId}
-          />
+
+          {targetTab === "contacts" ? (
+            <ContactSelector
+              selectedIds={selectedContactIds}
+              onChange={setSelectedContactIds}
+              strategyId={strategyId}
+            />
+          ) : (
+            <>
+              <p className="mb-3 text-xs text-gray-500">
+                Selecting a company will add all of its contacts to the campaign
+                when you finish.
+              </p>
+              <CompanySelector
+                selectedIds={selectedCompanyIds}
+                onChange={setSelectedCompanyIds}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -445,13 +528,13 @@ export function CampaignBuilder({
               <Button
                 variant="outline"
                 onClick={() => handleSubmit(false)}
-                isLoading={isLoading}
+                isLoading={isLoading || expandingCompanies}
               >
                 Save as Draft
               </Button>
               <Button
                 onClick={() => handleSubmit(true)}
-                isLoading={isLoading}
+                isLoading={isLoading || expandingCompanies}
               >
                 Create & Activate
               </Button>
