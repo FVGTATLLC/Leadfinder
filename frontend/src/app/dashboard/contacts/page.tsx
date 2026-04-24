@@ -160,10 +160,23 @@ export default function ContactsPage() {
     setPage(1);
   };
 
+  const toSnakePayload = (formData: ContactFormData) => ({
+    company_id: formData.companyId,
+    first_name: formData.firstName || null,
+    last_name: formData.lastName || null,
+    email: formData.email || null,
+    phone: formData.phone || null,
+    job_title: formData.jobTitle || null,
+    persona_type: formData.personaType,
+    linkedin_url: formData.linkedinUrl || null,
+    notes: formData.notes || null,
+    is_primary: formData.isPrimary,
+  });
+
   const handleCreateContact = async (formData: ContactFormData) => {
     setFormLoading(true);
     try {
-      await apiPost("/contacts", formData);
+      await apiPost("/contacts", toSnakePayload(formData));
       setIsCreateOpen(false);
       mutate(queryKey);
     } catch {
@@ -177,7 +190,9 @@ export default function ContactsPage() {
     if (!editingContact) return;
     setFormLoading(true);
     try {
-      await apiPost(`/contacts/${editingContact.id}`, formData);
+      const { company_id, ...patchPayload } = toSnakePayload(formData);
+      void company_id;
+      await apiPost(`/contacts/${editingContact.id}`, patchPayload);
       setEditingContact(null);
       mutate(queryKey);
     } catch {
