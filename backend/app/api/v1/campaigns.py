@@ -73,8 +73,21 @@ async def create_campaign(
             db, campaign.id, data.contact_ids
         )
 
-    # Set status if caller asked for something other than the default
-    if data.status and data.status != campaign.status:
+    # If caller asked to activate immediately, run the full activation
+    # (approve + generate step-1 messages + auto-send when delay=0). For any
+    # other status, just flip the field.
+    if data.status == "active":
+        # Approve so generated messages land as 'approved' (auto-sendable)
+        try:
+            await campaign_service.approve_campaign(
+                db, campaign.id, uuid.UUID(current_user.sub)
+            )
+        except Exception:
+            # Non-fatal; activation continues and messages will be pending_approval
+            pass
+        await db.commit()  # persist steps + contacts + approval before impl reopens session
+        await _activate_campaign_impl(str(campaign.id), current_user.sub)
+    elif data.status and data.status != campaign.status:
         await campaign_service.update_campaign(
             db, campaign.id, CampaignUpdate(status=data.status)  # type: ignore[arg-type]
         )
