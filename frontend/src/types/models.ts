@@ -97,7 +97,7 @@ export interface Company {
   revenueRange: string | null;
   travelIntensity: TravelIntensity | null;
   icpScore: number | null;
-  scoreBreakdown: Record<string, number> | null;
+  scoreBreakdown: Record<string, unknown> | null;
   source: CompanySource;
   linkedinUrl: string | null;
   website: string | null;
