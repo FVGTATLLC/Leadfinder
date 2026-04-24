@@ -1,11 +1,68 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { DataTable, type Column } from "@/components/common/data-table";
-import { StatusBadge } from "@/components/common/status-badge";
 import { formatDate } from "@/lib/utils";
-import type { Company } from "@/types/models";
+import { apiPatch } from "@/lib/api-client";
+import {
+  CompanyStatus,
+  COMPANY_STATUS_LABEL,
+  type Company,
+} from "@/types/models";
+
+const STATUS_STYLE: Record<CompanyStatus, string> = {
+  [CompanyStatus.NEW]: "bg-blue-50 text-blue-700 border-blue-200",
+  [CompanyStatus.IN_PROCESS]: "bg-amber-50 text-amber-700 border-amber-200",
+  [CompanyStatus.CONVERTED]: "bg-green-50 text-green-700 border-green-200",
+};
+
+interface InlineStatusSelectProps {
+  companyId: string;
+  value: CompanyStatus;
+  onChanged?: (next: CompanyStatus) => void;
+}
+
+function InlineStatusSelect({
+  companyId,
+  value,
+  onChanged,
+}: InlineStatusSelectProps) {
+  const [current, setCurrent] = useState<CompanyStatus>(value);
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (next: CompanyStatus) => {
+    if (next === current) return;
+    const previous = current;
+    setCurrent(next);
+    setSaving(true);
+    try {
+      await apiPatch(`/companies/${companyId}`, { status: next });
+      onChanged?.(next);
+    } catch {
+      setCurrent(previous);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <select
+      value={current}
+      disabled={saving}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => handleChange(e.target.value as CompanyStatus)}
+      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${STATUS_STYLE[current]} disabled:opacity-60`}
+    >
+      {Object.values(CompanyStatus).map((s) => (
+        <option key={s} value={s}>
+          {COMPANY_STATUS_LABEL[s]}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 interface CompanyTableProps {
   companies: Company[];
@@ -16,6 +73,7 @@ interface CompanyTableProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectChange?: (ids: Set<string>) => void;
+  onStatusChanged?: (companyId: string, status: CompanyStatus) => void;
 }
 
 export function CompanyTable({
@@ -27,6 +85,7 @@ export function CompanyTable({
   selectable = false,
   selectedIds,
   onSelectChange,
+  onStatusChanged,
 }: CompanyTableProps) {
   const router = useRouter();
 
@@ -125,16 +184,13 @@ export function CompanyTable({
       },
     },
     {
-      key: "source",
-      label: "Source",
+      key: "status",
+      label: "Status",
       render: (item) => (
-        <StatusBadge
-          status={item.source}
-          variantMap={{
-            manual: "bg-gray-100 text-gray-700",
-            discovery_agent: "bg-purple-50 text-purple-700",
-            import: "bg-blue-50 text-blue-700",
-          }}
+        <InlineStatusSelect
+          companyId={item.id}
+          value={(item.status as CompanyStatus) ?? CompanyStatus.NEW}
+          onChanged={(next) => onStatusChanged?.(item.id, next)}
         />
       ),
     },

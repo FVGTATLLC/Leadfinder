@@ -68,6 +68,12 @@ class Company(Base):
         String(100),
         nullable=True,
     )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        default="new",
+        server_default="new",
+        nullable=False,
+    )
     linkedin_url: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,

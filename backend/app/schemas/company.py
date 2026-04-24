@@ -48,6 +48,7 @@ class CompanyUpdate(BaseModel):
     linkedin_url: str | None = Field(default=None, max_length=500)
     website: str | None = Field(default=None, max_length=500)
     source: str | None = None
+    status: str | None = Field(default=None, pattern="^(new|in_process|converted)$")
 
 
 class CompanyResponse(BaseModel):
@@ -65,6 +66,7 @@ class CompanyResponse(BaseModel):
     icp_score: float | None = None
     score_breakdown: dict | None = None
     source: str | None = None
+    status: str = "new"
     linkedin_url: str | None = None
     website: str | None = None
     created_by: uuid.UUID
@@ -86,6 +88,7 @@ class CompanyListResponse(BaseModel):
     icp_score: float | None = None
     score_breakdown: dict | None = None
     source: str | None = None
+    status: str = "new"
     website: str | None = None
     created_at: datetime
 

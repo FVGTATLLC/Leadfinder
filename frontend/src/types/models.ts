@@ -62,6 +62,18 @@ export enum CompanySource {
   IMPORT = "import",
 }
 
+export enum CompanyStatus {
+  NEW = "new",
+  IN_PROCESS = "in_process",
+  CONVERTED = "converted",
+}
+
+export const COMPANY_STATUS_LABEL: Record<CompanyStatus, string> = {
+  [CompanyStatus.NEW]: "New",
+  [CompanyStatus.IN_PROCESS]: "In Process",
+  [CompanyStatus.CONVERTED]: "Converted to customer",
+};
+
 export interface StrategyFilters {
   industry: string[];
   city: string[];
@@ -102,6 +114,7 @@ export interface Company {
   icpScore: number | null;
   scoreBreakdown: Record<string, unknown> | null;
   source: CompanySource;
+  status: CompanyStatus;
   linkedinUrl: string | null;
   website: string | null;
   createdBy: string;
