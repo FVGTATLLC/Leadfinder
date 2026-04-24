@@ -48,7 +48,7 @@ class CompanyUpdate(BaseModel):
     linkedin_url: str | None = Field(default=None, max_length=500)
     website: str | None = Field(default=None, max_length=500)
     source: str | None = None
-    status: str | None = Field(default=None, pattern="^(new|in_process|converted)$")
+    status: str | None = Field(default=None, pattern="^(new|in_process|converted|lost)$")
 
 
 class CompanyResponse(BaseModel):

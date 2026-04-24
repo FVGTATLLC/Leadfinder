@@ -15,6 +15,7 @@ const STATUS_STYLE: Record<CompanyStatus, string> = {
   [CompanyStatus.NEW]: "bg-blue-50 text-blue-700 border-blue-200",
   [CompanyStatus.IN_PROCESS]: "bg-amber-50 text-amber-700 border-amber-200",
   [CompanyStatus.CONVERTED]: "bg-green-50 text-green-700 border-green-200",
+  [CompanyStatus.LOST]: "bg-red-50 text-red-700 border-red-200",
 };
 
 interface InlineStatusSelectProps {

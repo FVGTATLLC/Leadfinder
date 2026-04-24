@@ -39,6 +39,7 @@ function buildFilterConfigs(rows: CompanyRow[]): FilterConfig[] {
     { label: "New", value: "new" },
     { label: "In Process", value: "in_process" },
     { label: "Converted to customer", value: "converted" },
+    { label: "Lost", value: "lost" },
   ];
 
   return [

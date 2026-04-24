@@ -66,12 +66,14 @@ export enum CompanyStatus {
   NEW = "new",
   IN_PROCESS = "in_process",
   CONVERTED = "converted",
+  LOST = "lost",
 }
 
 export const COMPANY_STATUS_LABEL: Record<CompanyStatus, string> = {
   [CompanyStatus.NEW]: "New",
   [CompanyStatus.IN_PROCESS]: "In Process",
   [CompanyStatus.CONVERTED]: "Converted to customer",
+  [CompanyStatus.LOST]: "Lost",
 };
 
 export interface StrategyFilters {
