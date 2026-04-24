@@ -229,6 +229,41 @@ class OrchestratorAgent:
         """
         result = {"message_generated": False}
 
+        # Short-circuit: if the step is a hand-written template (not AI-generated),
+        # use its subject/body verbatim — no LLM, no research.
+        if not next_step.is_ai_generated:
+            subject = (next_step.subject_template or "").strip()
+            body = (next_step.body_template or "").strip()
+            if not subject and not body:
+                logger.warning(
+                    "Non-AI step %s has empty subject and body; skipping",
+                    next_step.id,
+                )
+                return result
+
+            message_status = "approved" if campaign.approved_by is not None else "pending_approval"
+            message = MessageDraft(
+                sequence_step_id=next_step.id,
+                contact_id=contact.id,
+                campaign_id=campaign.id,
+                subject=subject,
+                body=body,
+                tone=campaign.tone_preset or "consultative",
+                context_data={
+                    "auto_generated": False,
+                    "step_number": next_step.step_number,
+                    "source": "template",
+                },
+                status=message_status,
+                created_by=campaign.created_by,
+            )
+            self.db.add(message)
+            await self.db.flush()
+            result["message_generated"] = True
+            result["message_id"] = str(message.id)
+            result["message_status"] = message_status
+            return result
+
         # 1. Ensure research brief exists
         research_data = await self._get_or_generate_research(contact)
 
