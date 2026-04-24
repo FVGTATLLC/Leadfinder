@@ -352,17 +352,8 @@ export default function CampaignDetailPage() {
               <Edit className="mr-1.5 h-3.5 w-3.5" />
               Edit
             </Button>
-            {!campaign.approvedBy && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleApprove}
-                isLoading={actionLoading}
-              >
-                <Shield className="mr-1.5 h-3.5 w-3.5" />
-                Approve
-              </Button>
-            )}
+            {/* Approve button removed — use Launch Campaign in the status bar
+                below to approve + activate + generate messages in one click. */}
             <div className="relative">
               <Button
                 variant="ghost"
