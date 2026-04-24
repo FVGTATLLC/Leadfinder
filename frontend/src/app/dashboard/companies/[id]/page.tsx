@@ -568,24 +568,34 @@ export default function CompanyDetailPage() {
                 }
               />
             )}
-            {scoreBreakdown.location &&
-              typeof (scoreBreakdown.location as { lat?: number; lng?: number }).lat === "number" && (
+            {(() => {
+              const loc = scoreBreakdown.location as
+                | { lat?: number; lng?: number }
+                | undefined;
+              if (
+                !loc ||
+                typeof loc.lat !== "number" ||
+                typeof loc.lng !== "number"
+              ) {
+                return null;
+              }
+              return (
                 <InfoItem
                   label="Coordinates"
                   value={
                     <a
-                      href={`https://www.google.com/maps?q=${(scoreBreakdown.location as { lat: number; lng: number }).lat},${(scoreBreakdown.location as { lat: number; lng: number }).lng}`}
+                      href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700"
                     >
-                      {(scoreBreakdown.location as { lat: number; lng: number }).lat.toFixed(4)},{" "}
-                      {(scoreBreakdown.location as { lat: number; lng: number }).lng.toFixed(4)}
+                      {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   }
                 />
-              )}
+              );
+            })()}
           </dl>
         </div>
       )}
