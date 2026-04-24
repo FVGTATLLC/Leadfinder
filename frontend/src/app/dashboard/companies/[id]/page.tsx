@@ -427,13 +427,15 @@ export default function CompanyDetailPage() {
 
           {Object.keys(scoreBreakdown).length > 0 && (
             <div className="mt-6 space-y-3">
-              {Object.entries(scoreBreakdown).map(([key, val]) => (
-                <ScoreBar
-                  key={key}
-                  label={key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                  value={val}
-                />
-              ))}
+              {Object.entries(scoreBreakdown)
+                .filter(([, val]) => typeof val === "number")
+                .map(([key, val]) => (
+                  <ScoreBar
+                    key={key}
+                    label={key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    value={val as number}
+                  />
+                ))}
             </div>
           )}
         </div>
