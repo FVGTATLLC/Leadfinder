@@ -39,20 +39,35 @@ const SEARCH_TERM_SUGGESTIONS = [
 ];
 
 const LOCATION_SUGGESTIONS = [
-  "Lagos, Nigeria",
-  "Abuja, Nigeria",
-  "Port Harcourt, Nigeria",
-  "Dubai, UAE",
-  "Abu Dhabi, UAE",
+  // India
+  "Ahmedabad, India",
   "Mumbai, India",
   "Delhi, India",
   "Bangalore, India",
+  "Hyderabad, India",
+  "Chennai, India",
+  "Pune, India",
+  "Kolkata, India",
+  "Surat, India",
+  "Jaipur, India",
+  // Middle East
+  "Dubai, UAE",
+  "Abu Dhabi, UAE",
+  "Sharjah, UAE",
+  "Riyadh, Saudi Arabia",
+  "Doha, Qatar",
+  // Africa
+  "Lagos, Nigeria",
+  "Abuja, Nigeria",
+  "Port Harcourt, Nigeria",
   "Nairobi, Kenya",
   "Johannesburg, South Africa",
   "Cairo, Egypt",
   "Accra, Ghana",
+  // Other
   "London, UK",
   "New York, USA",
+  "Singapore",
 ];
 
 const emptyFilters: StrategyFilters = {
